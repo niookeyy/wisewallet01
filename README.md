@@ -1,3 +1,3 @@
-# Welcome to your Lovable project
+# Welcome to Wise Wallet
 
 TODO: Document your project here
