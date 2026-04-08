@@ -1,12 +1,18 @@
 import { useState } from "react";
-import { ScanLine, Clock, Zap, CheckCircle, ArrowLeft } from "lucide-react";
+import { ScanLine, Clock, Zap, CheckCircle, ArrowLeft, AlertCircle } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { usePendingTransactions } from "@/contexts/PendingTransactionsContext";
+import { useDebtHealth } from "@/contexts/DebtHealthContext";
 
-type Step = "scan" | "amount" | "category" | "delay" | "success";
+type Step = "scan" | "amount" | "category" | "delay" | "success" | "blocked";
 
 const ScanPage = () => {
+  const navigate = useNavigate();
+  const { addPending } = usePendingTransactions();
+  const { isEmergency } = useDebtHealth();
+
   const [step, setStep] = useState<Step>("scan");
   const [amount, setAmount] = useState("");
-  const [category, setCategory] = useState<"primer" | "sekunder" | null>(null);
 
   const numericAmount = parseInt(amount.replace(/\D/g, "")) || 0;
   const roundedUp = Math.ceil(numericAmount / 500) * 500;
@@ -18,15 +24,50 @@ const ScanPage = () => {
     new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(n);
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value.replace(/\D/g, "");
-    setAmount(raw);
+    setAmount(e.target.value.replace(/\D/g, ""));
   };
 
   const reset = () => {
     setStep("scan");
     setAmount("");
-    setCategory(null);
   };
+
+  const handleSekunder = () => {
+    // Emergency mode check
+    if (isEmergency && numericAmount > 50000) {
+      setStep("blocked");
+      return;
+    }
+    // Create pending transaction and navigate to cooling period
+    const now = Date.now();
+    const txId = addPending({
+      amount: numericAmount,
+      roundedAmount: roundedUp,
+      saving: userSaving,
+      adminFee,
+      category: "sekunder",
+      createdAt: now,
+      expiresAt: now + 86400000,
+    });
+    navigate(`/cooling/${txId}`);
+  };
+
+  if (step === "blocked") {
+    return (
+      <div className="px-5 pt-12 pb-28 max-w-md mx-auto flex flex-col items-center justify-center min-h-[70vh] text-center animate-slide-up space-y-6">
+        <div className="w-20 h-20 rounded-full gradient-danger flex items-center justify-center">
+          <AlertCircle className="w-10 h-10 text-danger-foreground" />
+        </div>
+        <h2 className="text-xl font-bold text-foreground">Rem Darurat Aktif!</h2>
+        <p className="text-sm text-muted-foreground px-4">
+          Hutangmu sudah di zona bahaya. Transaksi Sekunder di atas {formatCurrency(50000)} diblokir. Fokus ke kebutuhan Primer dulu.
+        </p>
+        <button onClick={reset} className="gradient-primary text-primary-foreground px-8 py-3 rounded-xl font-semibold shadow-fab transition-transform active:scale-95">
+          Kembali
+        </button>
+      </div>
+    );
+  }
 
   if (step === "success") {
     return (
@@ -65,15 +106,18 @@ const ScanPage = () => {
 
         <div className="space-y-3">
           <button
-            onClick={() => setStep("success")}
+            onClick={() => {
+              // "Sabar Menunggu" → create pending tx and go to CoolingPeriodScreen
+              handleSekunder();
+            }}
             className="w-full glass-card rounded-xl p-4 flex items-center gap-4 transition-all active:scale-[0.98]"
           >
             <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center">
               <Clock className="w-5 h-5 text-muted-foreground" />
             </div>
             <div className="text-left">
-              <p className="text-sm font-semibold text-foreground">Tunggu 24 Jam</p>
-              <p className="text-xs text-muted-foreground">Gratis — biarkan emosi belanja mendingin.</p>
+              <p className="text-sm font-semibold text-foreground">Sabar Menunggu (Gratis)</p>
+              <p className="text-xs text-muted-foreground">Transaksi tertahan 24 jam — biarkan emosi belanja mendingin.</p>
             </div>
           </button>
 
@@ -100,6 +144,14 @@ const ScanPage = () => {
         <button onClick={() => setStep("amount")} className="flex items-center gap-2 text-muted-foreground">
           <ArrowLeft className="w-4 h-4" /> Kembali
         </button>
+
+        {isEmergency && (
+          <div className="gradient-danger rounded-xl p-3 flex items-center gap-2">
+            <AlertCircle className="w-5 h-5 text-danger-foreground flex-shrink-0" />
+            <p className="text-xs text-danger-foreground font-medium">Mode Darurat Aktif! Transaksi Sekunder dibatasi max Rp50.000.</p>
+          </div>
+        )}
+
         <div className="text-center">
           <h2 className="text-lg font-bold text-foreground mb-1">Pilih Kategori</h2>
           <p className="text-sm text-muted-foreground">Transaksi {formatCurrency(numericAmount)}</p>
@@ -107,7 +159,7 @@ const ScanPage = () => {
 
         <div className="space-y-3">
           <button
-            onClick={() => { setCategory("primer"); setStep("success"); }}
+            onClick={() => setStep("success")}
             className="w-full gradient-primary text-primary-foreground rounded-2xl p-6 text-left transition-transform active:scale-[0.98]"
           >
             <p className="text-lg font-bold">🛒 Kebutuhan Primer</p>
@@ -115,7 +167,7 @@ const ScanPage = () => {
           </button>
 
           <button
-            onClick={() => { setCategory("sekunder"); setStep("delay"); }}
+            onClick={() => setStep("delay")}
             className="w-full gradient-accent text-accent-foreground rounded-2xl p-6 text-left transition-transform active:scale-[0.98]"
           >
             <p className="text-lg font-bold">☕ Jajan Sekunder</p>
