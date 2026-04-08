@@ -12,6 +12,7 @@ import ScanPage from "./pages/ScanPage";
 import SubsPage from "./pages/SubsPage";
 import SavingsPage from "./pages/SavingsPage";
 import CoolingPeriodScreen from "./pages/CoolingPeriodScreen";
+import TransactionSuccessScreen from "./pages/TransactionSuccessScreen";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -32,6 +33,7 @@ const App = () => (
                 <Route path="/subs" element={<SubsPage />} />
                 <Route path="/savings" element={<SavingsPage />} />
                 <Route path="/cooling/:id" element={<CoolingPeriodScreen />} />
+                <Route path="/transaction-success" element={<TransactionSuccessScreen />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
               <BottomNav />

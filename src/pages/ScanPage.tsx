@@ -32,13 +32,24 @@ const ScanPage = () => {
     setAmount("");
   };
 
+  const navigateToSuccess = (category: "primer" | "sekunder") => {
+    navigate("/transaction-success", {
+      state: {
+        merchant: "Kopi Kenangan",
+        category,
+        originalAmount: numericAmount,
+        roundedAmount: roundedUp,
+        saving: userSaving,
+        adminFee,
+      },
+    });
+  };
+
   const handleSekunder = () => {
-    // Emergency mode check
     if (isEmergency && numericAmount > 50000) {
       setStep("blocked");
       return;
     }
-    // Create pending transaction and navigate to cooling period
     const now = Date.now();
     const txId = addPending({
       amount: numericAmount,
@@ -122,7 +133,7 @@ const ScanPage = () => {
           </button>
 
           <button
-            onClick={() => setStep("success")}
+            onClick={() => navigateToSuccess("sekunder")}
             className="w-full glass-card rounded-xl p-4 flex items-center gap-4 border border-accent/30 transition-all active:scale-[0.98]"
           >
             <div className="w-12 h-12 rounded-xl gradient-accent flex items-center justify-center">
@@ -159,7 +170,7 @@ const ScanPage = () => {
 
         <div className="space-y-3">
           <button
-            onClick={() => setStep("success")}
+            onClick={() => navigateToSuccess("primer")}
             className="w-full gradient-primary text-primary-foreground rounded-2xl p-6 text-left transition-transform active:scale-[0.98]"
           >
             <p className="text-lg font-bold">🛒 Kebutuhan Primer</p>

@@ -40,7 +40,16 @@ const CoolingPeriodScreen = () => {
   const handleBypass = useCallback(() => {
     if (tx) {
       completePending(tx.id);
-      navigate("/scan", { state: { bypassed: true, txId: tx.id } });
+      navigate("/transaction-success", {
+        state: {
+          merchant: tx.source || "Merchant",
+          category: "sekunder",
+          originalAmount: tx.amount,
+          roundedAmount: tx.roundedAmount,
+          saving: tx.saving,
+          adminFee: tx.adminFee,
+        },
+      });
     }
   }, [tx, completePending, navigate]);
 
@@ -51,7 +60,16 @@ const CoolingPeriodScreen = () => {
   const handleExecute = useCallback(() => {
     if (tx) {
       completePending(tx.id);
-      navigate("/scan", { state: { completed: true, txId: tx.id } });
+      navigate("/transaction-success", {
+        state: {
+          merchant: tx.source || "Merchant",
+          category: "sekunder",
+          originalAmount: tx.amount,
+          roundedAmount: tx.roundedAmount,
+          saving: tx.saving,
+          adminFee: tx.adminFee,
+        },
+      });
     }
   }, [tx, completePending, navigate]);
 
