@@ -2,7 +2,7 @@ import { Home, TrendingDown, CreditCard, PiggyBank, ScanLine } from "lucide-reac
 import { useLocation, useNavigate } from "react-router-dom";
 
 const tabs = [
-  { path: "/", icon: Home, label: "Beranda" },
+  { path: "/dashboard", icon: Home, label: "Beranda" },
   { path: "/leak-tracker", icon: TrendingDown, label: "Hutang" },
   { path: "/scan", icon: ScanLine, label: "SCAN", isFab: true },
   { path: "/subs", icon: CreditCard, label: "Langganan" },
