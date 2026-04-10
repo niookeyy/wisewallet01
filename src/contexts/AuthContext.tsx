@@ -109,7 +109,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         profile,
         loading,
         isAuthenticated: Boolean(user),
-        isOnboarded: Boolean(profile?.onboarding_completed),
+        isOnboarded: Boolean(profile?.onboarding_completed && (profile?.total_income ?? 0) > 0),
         refreshProfile,
         signOut,
       }}

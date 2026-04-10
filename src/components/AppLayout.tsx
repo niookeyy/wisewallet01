@@ -1,27 +1,20 @@
 import { useEffect, useState } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/contexts/AuthContext";
 
 const AppLayout = () => {
-  const [email, setEmail] = useState<string | null>(null);
+  const { profile, signOut } = useAuth();
   const [signingOut, setSigningOut] = useState(false);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const loadSession = async () => {
-      const { data } = await supabase.auth.getSession();
-      setEmail(data.session?.user.email ?? null);
-    };
-
-    loadSession();
-  }, []);
-
   const handleLogout = async () => {
     setSigningOut(true);
-    await supabase.auth.signOut();
+    await signOut();
     navigate("/", { replace: true });
   };
+
+  const displayName = profile?.name || profile?.username || profile?.email?.split("@")[0] || "Pengguna";
 
   return (
     <div className="min-h-screen bg-background">
@@ -30,7 +23,11 @@ const AppLayout = () => {
           <div>
             <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">Wise Wallet</p>
             <h1 className="text-lg font-semibold text-foreground">Dashboard</h1>
-            {email ? <p className="text-sm text-muted-foreground truncate max-w-[220px]">{email}</p> : null}
+            {displayName ? (
+              <p className="text-sm text-muted-foreground truncate max-w-[220px]">
+                Halo, {displayName}
+              </p>
+            ) : null}
           </div>
           <Button variant="outline" size="sm" onClick={handleLogout} disabled={signingOut}>
             {signingOut ? "Keluar..." : "Logout"}
