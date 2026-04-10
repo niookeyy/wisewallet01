@@ -28,6 +28,20 @@ const OnboardingPage = () => {
     }
   }, [authLoading, isAuthenticated, isOnboarded, navigate]);
 
+  useEffect(() => {
+    if (profile) {
+      if (!income && profile.total_income) {
+        setIncome(String(profile.total_income));
+      }
+      if (!primer && profile.balance_primer) {
+        setPrimer(String(profile.balance_primer));
+      }
+      if (!sekunder && profile.balance_sekunder) {
+        setSekunder(String(profile.balance_sekunder));
+      }
+    }
+  }, [profile, income, primer, sekunder]);
+
   // Hitung sisa untuk Dana Dingin secara real-time
   const totalIncome = Number(income) || 0;
   const danaPrimer = Number(primer) || 0;
