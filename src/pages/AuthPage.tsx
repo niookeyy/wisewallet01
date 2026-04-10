@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
+import { formatAuthErrorMessage, formatDatabaseErrorMessage } from "@/lib/supabase-errors";
 
 const AuthPage = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -37,11 +38,14 @@ const AuthPage = () => {
   const createOrUpdateProfile = async (userId: string, emailValue: string) => {
     const { error: profileError } = await supabase
       .from("profiles")
-      .upsert({ id: userId, email: emailValue, updated_at: new Date().toISOString() });
+      .upsert({ id: userId, email: emailValue, updated_at: new Date().toISOString() }, { onConflict: "id" });
 
     if (profileError) {
       console.error("Gagal membuat/memperbarui profil:", profileError.message);
+      return formatDatabaseErrorMessage(profileError.message);
     }
+
+    return null;
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -61,7 +65,7 @@ const AuthPage = () => {
         });
 
         if (signInError) {
-          setError(signInError.message);
+          setError(formatAuthErrorMessage(signInError.message));
           return;
         }
 
@@ -71,16 +75,25 @@ const AuthPage = () => {
           return;
         }
 
-        await createOrUpdateProfile(user.id, user.email ?? email);
+        const profileError = await createOrUpdateProfile(user.id, user.email ?? email);
+        if (profileError) {
+          await supabase.auth.signOut();
+          setError(profileError);
+          return;
+        }
+
         await refreshProfile();
       } else {
         const { data, error: signUpError } = await supabase.auth.signUp({
           email,
           password,
+          options: {
+            emailRedirectTo: window.location.origin,
+          },
         });
 
         if (signUpError) {
-          setError(signUpError.message);
+          setError(formatAuthErrorMessage(signUpError.message));
           return;
         }
 
@@ -92,15 +105,19 @@ const AuthPage = () => {
 
         // If session exists (email confirm disabled), go directly to onboarding
         if (data.session) {
-          await createOrUpdateProfile(user.id, user.email ?? email);
+          const profileError = await createOrUpdateProfile(user.id, user.email ?? email);
+          if (profileError) {
+            await supabase.auth.signOut();
+            setError(profileError);
+            return;
+          }
+
           await refreshProfile();
           navigate("/onboarding", { replace: true });
           return;
         }
 
-        // User created but needs email confirmation
-        await createOrUpdateProfile(user.id, user.email ?? email);
-        setMessage("Akun berhasil dibuat! Silakan cek email untuk verifikasi, lalu masuk.");
+        setMessage("Akun berhasil dibuat! Silakan cek email untuk verifikasi. Profil akan dibuat otomatis setelah Anda login.");
       }
     } finally {
       setLoading(false);

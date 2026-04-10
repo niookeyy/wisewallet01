@@ -52,6 +52,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     if (error) {
       console.error("Gagal mengambil profil:", error.message);
+      setProfile(null);
       return;
     }
 

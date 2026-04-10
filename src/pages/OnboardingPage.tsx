@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
+import { formatDatabaseErrorMessage } from "@/lib/supabase-errors";
 
 const OnboardingPage = () => {
   const [income, setIncome] = useState("");
@@ -43,20 +44,21 @@ const OnboardingPage = () => {
     setLoading(true);
     const { error: updateError } = await supabase
       .from("profiles")
-      .update({
+      .upsert({
+        id: user.id,
+        email: user.email ?? null,
         total_income: numericIncome,
         balance_primer: Math.round(numericIncome * 0.5),
         balance_sekunder: Math.round(numericIncome * 0.3),
         balance_cold_fund: Math.round(numericIncome * 0.2),
         onboarding_completed: true,
         updated_at: new Date().toISOString()
-      })
-      .eq("id", user.id);
+      }, { onConflict: "id" });
 
     setLoading(false);
 
     if (updateError) {
-      setError(updateError.message);
+      setError(formatDatabaseErrorMessage(updateError.message));
       return;
     }
 
