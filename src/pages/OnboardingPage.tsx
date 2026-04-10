@@ -11,7 +11,7 @@ const OnboardingPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
-  const { user, profile, isAuthenticated, isOnboarded, refreshProfile, loading: authLoading } = useAuth();
+  const { user, isAuthenticated, isOnboarded, refreshProfile, loading: authLoading } = useAuth();
 
   useEffect(() => {
     if (!authLoading) {
@@ -64,36 +64,42 @@ const OnboardingPage = () => {
     navigate("/dashboard", { replace: true });
   };
 
+  const formatInputCurrency = (value: string) => {
+    const num = value.replace(/[^0-9]/g, "");
+    if (!num) return "";
+    return new Intl.NumberFormat("id-ID").format(Number(num));
+  };
+
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 px-5 py-10">
+    <div className="min-h-screen bg-background text-foreground px-5 py-10">
       <div className="mx-auto max-w-md space-y-8">
         <div className="space-y-3 text-center">
-          <p className="text-sm uppercase tracking-[0.25em] text-slate-400">Langkah pertama</p>
-          <h1 className="text-4xl font-semibold tracking-tight text-white">Isi pendapatanmu</h1>
-          <p className="mx-auto max-w-xs text-sm text-slate-400">
-            Supabase akan menyimpan profil Anda dan mengarahkan ke dashboard saat onboarding selesai.
+          <p className="text-sm uppercase tracking-[0.25em] text-muted-foreground">Langkah pertama</p>
+          <h1 className="text-4xl font-semibold tracking-tight text-foreground">Isi pendapatanmu</h1>
+          <p className="mx-auto max-w-xs text-sm text-muted-foreground">
+            Data ini akan digunakan untuk membagi alokasi keuanganmu secara otomatis (50/30/20).
           </p>
         </div>
 
-        <Card className="overflow-hidden border border-white/10 bg-slate-900/95 shadow-2xl shadow-slate-950/40">
+        <Card className="overflow-hidden border border-border bg-card shadow-2xl">
           <CardHeader className="space-y-3">
-            <CardTitle>Onboarding Pendapatan</CardTitle>
+            <CardTitle className="text-foreground">Onboarding Pendapatan</CardTitle>
             <CardDescription>Masukkan nilai pendapatan bulanan untuk melanjutkan ke dashboard Wise Wallet.</CardDescription>
           </CardHeader>
           <CardContent>
             <form className="space-y-5" onSubmit={handleSubmit}>
               <div className="space-y-2">
-                <label className="block text-sm font-medium text-slate-200">Pendapatan bulanan</label>
+                <label className="block text-sm font-medium text-foreground">Pendapatan bulanan (Rp)</label>
                 <Input
-                  value={income}
+                  value={formatInputCurrency(income)}
                   onChange={(event) => setIncome(event.target.value)}
-                  placeholder="Contoh: 5000000"
+                  placeholder="Contoh: 5.000.000"
                   type="text"
                   disabled={loading}
                 />
               </div>
-              {error ? <p className="text-sm text-danger text-danger-foreground">{error}</p> : null}
-              <Button type="submit" className="w-full" disabled={loading}>
+              {error ? <p className="text-sm text-destructive">{error}</p> : null}
+              <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" disabled={loading}>
                 {loading ? "Menyimpan..." : "Simpan dan lanjutkan"}
               </Button>
             </form>
