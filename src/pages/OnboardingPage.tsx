@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { formatDatabaseErrorMessage } from "@/lib/supabase-errors";
+import { toast } from "sonner";
 
 const OnboardingPage = () => {
   const [income, setIncome] = useState("");
@@ -89,6 +90,7 @@ const OnboardingPage = () => {
     }
 
     await refreshProfile();
+    toast.success("Data berhasil disimpan! Selamat datang di dashboard");
     navigate("/dashboard", { replace: true });
   };
 
