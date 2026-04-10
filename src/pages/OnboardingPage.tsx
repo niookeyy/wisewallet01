@@ -9,10 +9,12 @@ import { formatDatabaseErrorMessage } from "@/lib/supabase-errors";
 
 const OnboardingPage = () => {
   const [income, setIncome] = useState("");
+  const [primer, setPrimer] = useState("");
+  const [sekunder, setSekunder] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
-  const { user, isAuthenticated, isOnboarded, refreshProfile, loading: authLoading } = useAuth();
+  const { user, profile, isAuthenticated, isOnboarded, refreshProfile, loading: authLoading } = useAuth();
 
   useEffect(() => {
     if (!authLoading) {
@@ -26,17 +28,27 @@ const OnboardingPage = () => {
     }
   }, [authLoading, isAuthenticated, isOnboarded, navigate]);
 
+  // Hitung sisa untuk Dana Dingin secara real-time
+  const totalIncome = Number(income) || 0;
+  const danaPrimer = Number(primer) || 0;
+  const danaSekunder = Number(sekunder) || 0;
+  const danaDingin = totalIncome - (danaPrimer + danaSekunder);
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
 
-    const numericIncome = Number(income.replace(/[^0-9]/g, ""));
-    if (!numericIncome || numericIncome <= 0) {
+    if (totalIncome <= 0) {
       setError("Masukkan pendapatan bulanan yang valid.");
       return;
     }
 
-    if (!user || !user.id) {
+    if (danaDingin < 0) {
+      setError("Total alokasi melebihi pendapatan bulanan Anda!");
+      return;
+    }
+
+    if (!user?.id) {
       setError("Sesi tidak ditemukan. Silakan masuk kembali.");
       return;
     }
@@ -47,10 +59,10 @@ const OnboardingPage = () => {
       .upsert({
         id: user.id,
         email: user.email ?? null,
-        total_income: numericIncome,
-        balance_primer: Math.round(numericIncome * 0.5),
-        balance_sekunder: Math.round(numericIncome * 0.3),
-        balance_cold_fund: Math.round(numericIncome * 0.2),
+        total_income: totalIncome,
+        balance_primer: danaPrimer,
+        balance_sekunder: danaSekunder,
+        balance_cold_fund: danaDingin,
         onboarding_completed: true,
         updated_at: new Date().toISOString()
       }, { onConflict: "id" });
@@ -66,43 +78,85 @@ const OnboardingPage = () => {
     navigate("/dashboard", { replace: true });
   };
 
-  const formatInputCurrency = (value: string) => {
-    const num = value.replace(/[^0-9]/g, "");
-    if (!num) return "";
-    return new Intl.NumberFormat("id-ID").format(Number(num));
+  const formatCurrency = (val: number) => {
+    return new Intl.NumberFormat("id-ID").format(val);
   };
 
   return (
     <div className="min-h-screen bg-background text-foreground px-5 py-10">
       <div className="mx-auto max-w-md space-y-8">
         <div className="space-y-3 text-center">
-          <p className="text-sm uppercase tracking-[0.25em] text-muted-foreground">Langkah pertama</p>
-          <h1 className="text-4xl font-semibold tracking-tight text-foreground">Isi pendapatanmu</h1>
+          <p className="text-sm uppercase tracking-[0.25em] text-muted-foreground">Kustomisasi Keuangan</p>
+          <h1 className="text-4xl font-semibold tracking-tight text-foreground">Atur Alokasimu</h1>
           <p className="mx-auto max-w-xs text-sm text-muted-foreground">
-            Data ini akan digunakan untuk membagi alokasi keuanganmu secara otomatis (50/30/20).
+            Tentukan sendiri jatah dana primer dan sekundermu. Sisanya akan otomatis masuk ke Dana Dingin.
           </p>
         </div>
 
         <Card className="overflow-hidden border border-border bg-card shadow-2xl">
-          <CardHeader className="space-y-3">
-            <CardTitle className="text-foreground">Onboarding Pendapatan</CardTitle>
-            <CardDescription>Masukkan nilai pendapatan bulanan untuk melanjutkan ke dashboard Wise Wallet.</CardDescription>
+          <CardHeader>
+            <CardTitle>Onboarding Pendapatan</CardTitle>
+            <CardDescription>Sesuaikan alokasi dana bulanan Anda.</CardDescription>
           </CardHeader>
           <CardContent>
             <form className="space-y-5" onSubmit={handleSubmit}>
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-foreground">Pendapatan bulanan (Rp)</label>
-                <Input
-                  value={formatInputCurrency(income)}
-                  onChange={(event) => setIncome(event.target.value)}
-                  placeholder="Contoh: 5.000.000"
-                  type="text"
-                  disabled={loading}
-                />
+              <div className="space-y-4">
+                {/* Input Pendapatan */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Total Pendapatan (Rp)</label>
+                  <Input
+                    value={income}
+                    onChange={(e) => setIncome(e.target.value.replace(/[^0-9]/g, ""))}
+                    placeholder="Contoh: 5000000"
+                    type="text"
+                    disabled={loading}
+                  />
+                </div>
+
+                {/* Input Dana Primer */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Alokasi Dana Primer (Kebutuhan)</label>
+                  <Input
+                    value={primer}
+                    onChange={(e) => setPrimer(e.target.value.replace(/[^0-9]/g, ""))}
+                    placeholder="Contoh: 2500000"
+                    type="text"
+                    disabled={loading}
+                  />
+                </div>
+
+                {/* Input Dana Sekunder */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Alokasi Dana Sekunder (Keinginan)</label>
+                  <Input
+                    value={sekunder}
+                    onChange={(e) => setSekunder(e.target.value.replace(/[^0-9]/g, ""))}
+                    placeholder="Contoh: 1500000"
+                    type="text"
+                    disabled={loading}
+                  />
+                </div>
+
+                {/* Kalkulasi Dana Dingin Otomatis */}
+                <div className={`p-4 rounded-lg border ${danaDingin < 0 ? 'bg-destructive/10 border-destructive' : 'bg-primary/5 border-primary/20'}`}>
+                  <p className="text-xs uppercase font-bold text-muted-foreground">Dana Dingin (Tabungan Otomatis)</p>
+                  <p className="text-2xl font-bold text-primary">
+                    Rp {formatCurrency(danaDingin)}
+                  </p>
+                  {danaDingin < 0 && (
+                    <p className="text-xs text-destructive mt-1 font-medium italic">Peringatan: Alokasi melebihi pendapatan!</p>
+                  )}
+                </div>
               </div>
+
               {error ? <p className="text-sm text-destructive">{error}</p> : null}
-              <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" disabled={loading}>
-                {loading ? "Menyimpan..." : "Simpan dan lanjutkan"}
+              
+              <Button 
+                type="submit" 
+                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" 
+                disabled={loading || danaDingin < 0}
+              >
+                {loading ? "Menyimpan..." : "Simpan dan Buka Dashboard"}
               </Button>
             </form>
           </CardContent>
