@@ -102,8 +102,15 @@ const AuthPage = () => {
           return;
         }
 
+        const pendingUsername =
+          username || window.localStorage.getItem("pendingUsername") || undefined;
+
+        if (pendingUsername) {
+          window.localStorage.removeItem("pendingUsername");
+        }
+
         // ✅ JALANKAN DI BACKGROUND (tidak di-await)
-        createOrUpdateProfile(user.id, user.email ?? email, username || undefined);
+        createOrUpdateProfile(user.id, user.email ?? email, pendingUsername);
 
         // ✅ refresh juga tidak blocking
         refreshProfile();
@@ -133,10 +140,12 @@ const AuthPage = () => {
           createOrUpdateProfile(user.id, user.email ?? email, username || undefined);
           refreshProfile();
 
+          window.localStorage.removeItem("pendingUsername");
           navigate("/onboarding", { replace: true });
           return;
         }
 
+        window.localStorage.setItem("pendingUsername", username);
         setMessage("Akun berhasil dibuat! Silakan cek email untuk verifikasi.");
       }
     } catch (err) {
