@@ -35,21 +35,31 @@ const AuthPage = () => {
     return true;
   };
 
+  // ✅ NON-BLOCKING (tidak bikin loading lama)
   const createOrUpdateProfile = async (userId: string, emailValue: string) => {
-    const { error: profileError } = await supabase
-      .from("profiles")
-      .upsert({ id: userId, email: emailValue, updated_at: new Date().toISOString() }, { onConflict: "id" });
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .upsert(
+          {
+            id: userId,
+            email: emailValue,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "id" }
+        );
 
-    if (profileError) {
-      console.error("Gagal membuat/memperbarui profil:", profileError.message);
-      return formatDatabaseErrorMessage(profileError.message);
+      if (error) {
+        console.error("Profile error:", error.message);
+      }
+    } catch (err) {
+      console.error("Unexpected profile error:", err);
     }
-
-    return null;
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    console.log("Auth form submit", { isLogin, email });
     setError(null);
     setMessage(null);
 
@@ -75,14 +85,11 @@ const AuthPage = () => {
           return;
         }
 
-        const profileError = await createOrUpdateProfile(user.id, user.email ?? email);
-        if (profileError) {
-          await supabase.auth.signOut();
-          setError(profileError);
-          return;
-        }
+        // ✅ JALANKAN DI BACKGROUND (tidak di-await)
+        createOrUpdateProfile(user.id, user.email ?? email);
 
-        await refreshProfile();
+        // ✅ refresh juga tidak blocking
+        refreshProfile();
       } else {
         const { data, error: signUpError } = await supabase.auth.signUp({
           email,
@@ -98,29 +105,28 @@ const AuthPage = () => {
         }
 
         const user = data.user ?? data.session?.user;
+
         if (!user) {
           setMessage("Akun dibuat! Cek email untuk verifikasi, lalu masuk.");
           return;
         }
 
-        // If session exists (email confirm disabled), go directly to onboarding
         if (data.session) {
-          const profileError = await createOrUpdateProfile(user.id, user.email ?? email);
-          if (profileError) {
-            await supabase.auth.signOut();
-            setError(profileError);
-            return;
-          }
+          // ✅ background juga
+          createOrUpdateProfile(user.id, user.email ?? email);
+          refreshProfile();
 
-          await refreshProfile();
           navigate("/onboarding", { replace: true });
           return;
         }
 
-        setMessage("Akun berhasil dibuat! Silakan cek email untuk verifikasi. Profil akan dibuat otomatis setelah Anda login.");
+        setMessage("Akun berhasil dibuat! Silakan cek email untuk verifikasi.");
       }
+    } catch (err) {
+      console.error("AUTH ERROR:", err);
+      setError("Terjadi kesalahan, coba lagi.");
     } finally {
-      setLoading(false);
+      setLoading(false); // 🔥 ini penting (sudah benar)
     }
   };
 
@@ -161,6 +167,7 @@ const AuthPage = () => {
                 </button>
               ))}
             </div>
+
             <div className="space-y-1">
               <CardTitle>{isLogin ? "Masuk ke Wise Wallet" : "Daftar akun baru"}</CardTitle>
               <CardDescription>
@@ -170,40 +177,41 @@ const AuthPage = () => {
               </CardDescription>
             </div>
           </CardHeader>
+
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-5">
               <div className="space-y-2">
-                <label className="block text-sm font-medium text-foreground">Email</label>
+                <label className="block text-sm font-medium">Email</label>
                 <Input
                   value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  placeholder="contoh@domain.com"
+                  onChange={(e) => setEmail(e.target.value)}
                   type="email"
-                  autoComplete="email"
                   disabled={loading}
                 />
               </div>
+
               <div className="space-y-2">
-                <label className="block text-sm font-medium text-foreground">Password</label>
+                <label className="block text-sm font-medium">Password</label>
                 <Input
                   value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  placeholder="Minimal 6 karakter"
+                  onChange={(e) => setPassword(e.target.value)}
                   type="password"
-                  autoComplete={isLogin ? "current-password" : "new-password"}
                   disabled={loading}
                 />
               </div>
-              {error ? <p className="text-sm text-destructive">{error}</p> : null}
-              {message ? <p className="text-sm text-accent">{message}</p> : null}
-              <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" disabled={loading}>
+
+              {error && <p className="text-sm text-red-500">{error}</p>}
+              {message && <p className="text-sm text-green-500">{message}</p>}
+
+              <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? "Mohon tunggu..." : isLogin ? "Masuk" : "Daftar"}
               </Button>
             </form>
           </CardContent>
-          <CardFooter className="flex flex-col gap-3 pt-0">
+
+          <CardFooter>
             <p className="text-center text-sm text-muted-foreground">
-              Dengan melanjutkan, Anda menyetujui penggunaan data untuk pengalaman Wise Wallet yang lebih baik.
+              Dengan melanjutkan, Anda menyetujui penggunaan data.
             </p>
           </CardFooter>
         </Card>
