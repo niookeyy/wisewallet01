@@ -10,6 +10,7 @@ import { formatAuthErrorMessage, formatDatabaseErrorMessage } from "@/lib/supaba
 const AuthPage = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -28,6 +29,10 @@ const AuthPage = () => {
       setError("Alamat email tidak valid.");
       return false;
     }
+    if (!isLogin && username.trim().length === 0) {
+      setError("Username harus diisi.");
+      return false;
+    }
     if (password.length < 6) {
       setError("Password harus minimal 6 karakter.");
       return false;
@@ -36,18 +41,30 @@ const AuthPage = () => {
   };
 
   // ✅ NON-BLOCKING (tidak bikin loading lama)
-  const createOrUpdateProfile = async (userId: string, emailValue: string) => {
+  const createOrUpdateProfile = async (
+    userId: string,
+    emailValue: string,
+    usernameValue?: string
+  ) => {
     try {
-      const { error } = await supabase
-        .from("profiles")
-        .upsert(
-          {
-            id: userId,
-            email: emailValue,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: "id" }
-        );
+      const profileData: {
+        id: string;
+        email: string;
+        updated_at: string;
+        username?: string;
+      } = {
+        id: userId,
+        email: emailValue,
+        updated_at: new Date().toISOString(),
+      };
+
+      if (usernameValue) {
+        profileData.username = usernameValue;
+      }
+
+      const { error } = await supabase.from("profiles").upsert(profileData, {
+        onConflict: "id",
+      });
 
       if (error) {
         console.error("Profile error:", error.message);
@@ -86,7 +103,7 @@ const AuthPage = () => {
         }
 
         // ✅ JALANKAN DI BACKGROUND (tidak di-await)
-        createOrUpdateProfile(user.id, user.email ?? email);
+        createOrUpdateProfile(user.id, user.email ?? email, username || undefined);
 
         // ✅ refresh juga tidak blocking
         refreshProfile();
@@ -113,7 +130,7 @@ const AuthPage = () => {
 
         if (data.session) {
           // ✅ background juga
-          createOrUpdateProfile(user.id, user.email ?? email);
+          createOrUpdateProfile(user.id, user.email ?? email, username || undefined);
           refreshProfile();
 
           navigate("/onboarding", { replace: true });
@@ -189,6 +206,19 @@ const AuthPage = () => {
                   disabled={loading}
                 />
               </div>
+
+              {!isLogin && (
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium">Username</label>
+                  <Input
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    type="text"
+                    placeholder="Masukkan username"
+                    disabled={loading}
+                  />
+                </div>
+              )}
 
               <div className="space-y-2">
                 <label className="block text-sm font-medium">Password</label>
