@@ -86,10 +86,13 @@ const AuthPage = () => {
 
     try {
       if (isLogin) {
+        console.log("LOGIN START", { email });
         const { data, error: signInError } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
+
+        console.log("LOGIN RESULT:", { data, signInError });
 
         if (signInError) {
           setError(formatAuthErrorMessage(signInError.message));
@@ -115,6 +118,7 @@ const AuthPage = () => {
         // ✅ refresh juga tidak blocking
         refreshProfile();
       } else {
+        console.log("SIGNUP START", { email, username });
         const { data, error: signUpError } = await supabase.auth.signUp({
           email,
           password,
@@ -122,6 +126,8 @@ const AuthPage = () => {
             emailRedirectTo: window.location.origin,
           },
         });
+
+        console.log("SIGNUP RESULT:", { data, signUpError });
 
         if (signUpError) {
           setError(formatAuthErrorMessage(signUpError.message));
